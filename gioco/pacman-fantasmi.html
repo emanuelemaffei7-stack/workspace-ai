@@ -1,0 +1,1030 @@
+<!doctype html>
+<!--
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║  ██████╗  █████╗  ██████╗ ███╗   ███╗ █████╗ ███╗   ██╗    ▄▄▄   ║
+║  ██╔══██╗██╔══██╗██╔════╝ ████╗ ████║██╔══██╗████╗  ██║  ▄█████▄ ║
+║  ██████╔╝███████║██║█████╗██╔████╔██║███████║██╔██╗ ██║  █ ▀█ ▀█ ║
+║  ██╔═══╝ ██╔══██║██║╚════╝██║╚██╔╝██║██╔══██║██║╚██╗██║  ███████ ║
+║  ██║     ██║  ██║╚██████╗ ██║ ╚═╝ ██║██║  ██║██║ ╚████║  ███████ ║
+║  ╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝  ▀ ▀ ▀ ▀ ║
+║                                                                  ║
+║       Programmazione I, IUDAV  //  Lezione 2, Esercizio 2        ║
+║                     IL GIOCO DELLA SETTIMANA                     ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  IL GIOCO   Pac-Man (Namco, 1980). Mangia tutti i puntini senza farti prendere dai fantasmi.
+             Le pillole grandi li fanno diventare blu: per qualche secondo li mangi tu.
+  COMANDI    Frecce oppure W A S D. INVIO per iniziare e per rigiocare. T mostra i bersagli.
+
+  I FANTASMI   Ognuno insegue una casella, il suo BERSAGLIO, e a ogni incrocio prende la strada
+               che lo avvicina di più. Con T vedete il bersaglio di ognuno: il quadratino del suo colore.
+               BLINKY insegue, PINKY fa l'imboscata, INKY usa Blinky, CLYDE insegue e poi scappa.
+
+  COME SI LAVORA
+    1. Cambia un valore nella sezione "1. IMPOSTAZIONI" qui sotto.
+    2. Salva con Ctrl+S (Mac: Cmd+S).
+    3. In Chrome premi F5 (Mac: Cmd+R), poi INVIO, e guarda cosa è cambiato.
+       Schermo nero? F12 in Chrome, scheda Console: l'errore in rosso dice la riga.
+
+  LE 10 MODIFICHE (cerca "MODIFICA 1" ... "MODIFICA 10")
+     1. Il titolo                     TITOLO (anche in ASCII art)
+     2. Il font del testo             FONT
+     3. Il colore di Pac-Man          COLORE_PACMAN
+     4. I colori dei fantasmi         COLORE_BLINKY, COLORE_PINKY, COLORE_INKY, COLORE_CLYDE, COLORE_PAURA
+     5. Il labirinto e lo sfondo      COLORE_MURI, COLORE_SFONDO, COLORE_PUNTINI
+     6. Le velocità                   VELOCITA_PACMAN, VELOCITA_FANTASMI, VELOCITA_PAURA
+     7. Il labirinto                  LABIRINTO: la mappa, # muri, . puntini, o pillole
+     8. Vite e punti                  VITE, PUNTI_PUNTINO, PUNTI_PILLOLA, PUNTI_FANTASMA, DURATA_PAURA
+     9. Le regole dei fantasmi        CLYDE_DISTANZA, PINKY_ANTICIPO, INKY_ANTICIPO, ONDATE
+    10. I suoni                       SUONI_ATTIVI, VOLUME, ONDA e le note SUONO_...
+
+  BONUS (con Claude Code)   Il bug di Pinky del 1980, un quinto fantasma con una regola tua,
+          Blinky che accelera quando restano pochi puntini, la frutta. Tutto in LEGGIMI.txt.
+-->
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAC-MAN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tiny5+Duo:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+<!--
+  FONT DA GOOGLE FONTS (facoltativo, serve internet)
+  Scegliete il font su fonts.google.com, copiate il <link> che vi dà e incollatelo qui sotto,
+  poi scrivete il nome in FONT, es. FONT = 'Press Start 2P'.
+-->
+
+<style>
+  html, body { margin: 0; height: 100%; background: #0A0F0A; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; outline: none; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="screen" tabindex="0"></canvas>
+<script>
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                                                                  ║
+// ║  ██████╗  █████╗  ██████╗ ███╗   ███╗ █████╗ ███╗   ██╗    ▄▄▄   ║
+// ║  ██╔══██╗██╔══██╗██╔════╝ ████╗ ████║██╔══██╗████╗  ██║  ▄█████▄ ║
+// ║  ██████╔╝███████║██║█████╗██╔████╔██║███████║██╔██╗ ██║  █ ▀█ ▀█ ║
+// ║  ██╔═══╝ ██╔══██║██║╚════╝██║╚██╔╝██║██╔══██║██║╚██╗██║  ███████ ║
+// ║  ██║     ██║  ██║╚██████╗ ██║ ╚═╝ ██║██║  ██║██║ ╚████║  ███████ ║
+// ║  ╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝  ▀ ▀ ▀ ▀ ║
+// ║                                                                  ║
+// ║       Programmazione I, IUDAV  //  Lezione 2, Esercizio 2        ║
+// ║                     IL GIOCO DELLA SETTIMANA                     ║
+// ║                                                                  ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                                                                  ║
+// ║   1. IMPOSTAZIONI: QUI POTETE CAMBIARE TUTTO                     ║
+// ║   Cambia un valore, salva (Ctrl+S), ricarica Chrome (F5).        ║
+// ║                                                                  ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+var TITOLO = 'パックマン'          // MODIFICA 1   il titolo (menu e scheda del browser)
+//   Anche in ASCII art: generala su https://patorjk.com/software/taag/ e incollala così:
+//   var TITOLO = String.raw`
+//    ____   _    ____      __  __    _    _   _
+//   |  _ \ / \  / ___|    |  \/  |  / \  | \ | |
+//   | |_) / _ \| |   _____| |\/| | / _ \ |  \| |
+//   |  __/ ___ \ |__|_____| |  | |/ ___ \| |\  |
+//   |_| /_/   \_\____|    |_|  |_/_/   \_\_| \_|
+//   `
+
+var FONT = 'Tiny5 Duo'          // MODIFICA 2   il font dei testi. Senza internet funzionano:
+                                //              'monospace' 'Courier New' 'Arial' 'Georgia'
+                                //              'Impact' 'Comic Sans MS' 'Trebuchet MS' 'Verdana'
+
+// I COLORI si scrivono in tre modi:
+//   2            un numero da 0 a 15: un colore della tavolozza (GREEN qui sotto)
+//   '#ff4400'    un colore esadecimale, tra apici
+//   'gold'       un nome inglese, tra apici: 'red' 'gold' 'hotpink' 'cyan' 'orange' 'white' ...
+var COLORE_PACMAN = 'purple'    // MODIFICA 3   Pac-Man
+var COLORE_BLINKY = 'green'   // MODIFICA 4   i fantasmi: Blinky rosso,
+var COLORE_PINKY = 'blue'    // MODIFICA 4   Pinky rosa,
+var COLORE_INKY = 'brown'     // MODIFICA 4   Inky azzurro,
+var COLORE_CLYDE = 'gold'    // MODIFICA 4   Clyde arancione
+var COLORE_PAURA = 'red'    // MODIFICA 4   i fantasmi spaventati (dopo la pillola grande)
+var COLORE_MURI = 'yellow'     // MODIFICA 5   i muri del labirinto
+var COLORE_SFONDO = 'black'           // MODIFICA 5   lo sfondo
+var COLORE_PUNTINI = 'pink'  // MODIFICA 5   i puntini e le pillole
+var COLORE_TESTO = 'purple'           //              le scritte
+var GREEN = false                //              tavolozza: true = verde del corso, false = colorata (TIC-80)
+
+// Le velocità si misurano in caselle al secondo (una casella = un puntino)
+var VELOCITA_PACMAN = 10       // MODIFICA 6   Pac-Man
+var VELOCITA_FANTASMI = 9.5       // MODIFICA 6   i fantasmi quando inseguono
+var VELOCITA_PAURA = 6          // MODIFICA 6   i fantasmi quando sono blu
+var VELOCITA_OCCHI = 17         //              gli occhi che tornano a casa
+
+// MODIFICA 7   IL LABIRINTO: disegnatelo voi. 28 colonne per 31 righe, come nel 1980.
+//   #  muro      .  puntino      o  pillola grande      spazio  vuoto
+//   Lasciate dove sono la casa dei fantasmi (il rettangolo in mezzo, con la porta --)
+//   e i due spazi vuoti in basso al centro: lì parte Pac-Man.
+//   La riga in mezzo, aperta ai due lati, è il tunnel: si esce a sinistra e si rientra a destra.
+//   Ogni riga tra apici e con la virgola in fondo. Righe più corte si allungano da sole.
+var LABIRINTO = [
+  '############################',
+  '#..........................#',
+  '#.##.######.####.######.##.#',
+  '#o##.######.####.######.##o#',
+  '#.##.######.####.######.##.#',
+  '#..........................#',
+  '#.##.##.####.##.####.##.##.#',
+  '#.##.##.####.##.####.##.##.#',
+  '#............##............#',
+  '######.##### ## #####.######',
+  '     #.##### ## #####.#     ',
+  '     #.##          ##.#     ',
+  '     #.## ###--### ##.#     ',
+  '######.## #      # ##.######',
+  '      .   #      #   .      ',
+  '######.## #      # ##.######',
+  '     #.## ######## ##.#     ',
+  '     #.##          ##.#     ',
+  '     #.## ######## ##.#     ',
+  '######.## ######## ##.######',
+  '#..........................#',
+  '#.##.######.####.######.##.#',
+  '#o##.######.####.######.##o#',
+  '#............  ............#',
+  '#.##.##.####.##.####.##.##.#',
+  '#.##.##.####.##.####.##.##.#',
+  '#..........................#',
+  '#.##.######.####.######.##.#',
+  '#.##.######.####.######.##.#',
+  '#..........................#',
+  '############################',
+]
+
+
+var VITE = 5                    // MODIFICA 8   quante vite ha Pac-Man
+var PUNTI_PUNTINO = 20          // MODIFICA 8   quanto vale un puntino
+var PUNTI_PILLOLA = 100          // MODIFICA 8   quanto vale una pillola grande
+var PUNTI_FANTASMA = 500        // MODIFICA 8   il primo fantasma mangiato: poi il doppio, 200 400 800 1600
+var DURATA_PAURA = 10            // MODIFICA 8   per quanti secondi i fantasmi restano blu (0 = mai)
+
+// LE REGOLE DEI FANTASMI: ogni fantasma insegue una casella, il suo BERSAGLIO (tasto T per vederlo).
+// Come lo calcola ognuno è scritto nella sezione 2, in cima. Qui cambiate i numeri che usa.
+var CLYDE_DISTANZA = 5          // MODIFICA 9   Clyde insegue, ma più vicino di così si spaventa e scappa nel suo angolo
+var PINKY_ANTICIPO = 4          // MODIFICA 9   quante caselle davanti a Pac-Man punta Pinky
+var INKY_ANTICIPO = 2           // MODIFICA 9   la casella davanti a Pac-Man da cui parte il calcolo di Inky
+var ONDATE = [5, 25, 5, 25, 3, 30, 3]   // MODIFICA 9   le ondate, in secondi: sparpagliati, inseguono, sparpagliati,
+                                        //              inseguono... Finita la lista, inseguono per sempre
+var USCITA_FANTASMI = [0, 0, 4, 8]      //              dopo quanti secondi esce di casa ognuno: Blinky, Pinky, Inky, Clyde
+var MOSTRA_BERSAGLI = false      //              true = all'inizio si vedono i bersagli (si cambia anche con il tasto T)
+
+// I SUONI: le note si scrivono come 'C-5' (do), 'D-5' (re), 'E-5' (mi) ... il numero è l'ottava
+var SUONI_ATTIVI = true         // MODIFICA 10  true = suoni accesi, false = spenti
+var VOLUME = 0.7                // MODIFICA 10  da 0 (muto) a 1 (massimo)
+var ONDA = 'square'             // MODIFICA 10  il timbro: 'square' (8 bit), 'triangle', 'sawtooth', 'sine'
+var SUONO_START = ['C-5', 'E-5', 'G-5', 'C-6', 'G-5', 'C-6', 'E-6', 'G-6']   // MODIFICA 10  la melodia di inizio partita
+var SUONO_PUNTINO = ['A-4', 'E-6', 'A-5']                   // MODIFICA 10  il "waka waka": le note si alternano, una per puntino
+var SUONO_PILLOLA = ['C-4', 'C-7']                   // MODIFICA 10  la pillola grande: da una nota all'altra
+var SUONO_FANTASMA = ['C-7', 'C-4']                  // MODIFICA 10  un fantasma mangiato
+var SUONO_MORTE = ['B-5', 'A-5', 'G-5', 'F-5', 'D#-5', 'C#-5', 'B-4', 'A-4']   // MODIFICA 10  Pac-Man preso
+
+// I tasti, con i codici di TIC-80: frecce 58 59 60 61, W 23, A 1, S 19, D 4, invio 50, spazio 48, T 20
+var TASTI_SU = [58, 23]
+var TASTI_GIU = [59, 19]
+var TASTI_SINISTRA = [60, 1]
+var TASTI_DESTRA = [61, 4]
+var TASTI_START = [50, 48]
+var TASTO_BERSAGLI = 20
+var TASTO_PAUSA = 16              // P, con i codici di TIC-80
+
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                                                                  ║
+// ║   2. IL GIOCO: LEGGETE, CAMBIATE SOLO SE SAPETE COSA FATE        ║
+// ║   In cima come pensano i fantasmi, poi Pac-Man, i fantasmi       ║
+// ║   che si muovono, il disegno e il game loop.                     ║
+// ║                                                                  ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+// ------------------------------------------------------------
+// COME PENSANO I FANTASMI: ognuno ha una funzione che restituisce il suo BERSAGLIO,
+// una casella { x: colonna, y: riga }. A ogni incrocio il fantasma prende la strada
+// che lo porta più vicino al bersaglio: ci pensa chooseDirection(), più in basso.
+// Cambia la regola, cambia il carattere del fantasma. I numeri che usano sono nella MODIFICA 9.
+//
+// Cose che usano qui dentro:
+//   pacTile()          la casella di Pac-Man, per esempio { x: 13, y: 23 }
+//   pacman.dir         dove guarda Pac-Man: { x: 1, y: 0 } destra, { x: -1, y: 0 } sinistra,
+//                      { x: 0, y: 1 } giù, { x: 0, y: -1 } su
+//   ghostTile(ghost)   la casella di un fantasma
+//   ghost.corner       l'angolo del labirinto di quel fantasma
+//   blinky()           il fantasma rosso (serve a Inky)
+//   distance(a, b)     quante caselle ci sono, in linea d'aria, tra la casella a e la casella b
+// Le colonne vanno da 0 (sinistra) a 27 (destra), le righe da 0 (in alto) a 30 (in basso).
+// Se una funzione restituisce null il fantasma non ha una regola e gira a caso (sopra ha un ?).
+// ------------------------------------------------------------
+
+// BLINKY, il rosso: insegue. Il suo bersaglio è la casella di Pac-Man.
+function blinkyTarget(ghost) {
+  return pacTile()
+}
+
+// CLYDE, l'arancione: insegue da lontano, ma da vicino si spaventa e scappa nel suo angolo.
+function clydeTarget(ghost) {
+  // SE Clyde è lontano da Pac-Man (più di CLYDE_DISTANZA caselle) insegue come Blinky,
+  // ALTRIMENTI scappa nel suo angolo. È una condizione: if ... else
+  if (distance(ghostTile(ghost), pacTile()) > CLYDE_DISTANZA) {
+    return pacTile()
+  } else {
+    return ghost.corner
+  }
+}
+
+// PINKY, la rosa: fa l'imboscata. Punta PINKY_ANTICIPO caselle DAVANTI a Pac-Man, per tagliargli la strada.
+function pinkyTarget(ghost) {
+  // La casella PINKY_ANTICIPO passi davanti a Pac-Man, nella direzione in cui guarda.
+  // Esempio: Pac-Man in { x: 10, y: 5 } che va a destra (dir.x = 1, dir.y = 0) dà { x: 14, y: 5 }.
+  var p = pacTile()
+  return { x: p.x + pacman.dir.x * PINKY_ANTICIPO, y: p.y + pacman.dir.y * PINKY_ANTICIPO }
+}
+
+// INKY, l'azzurro: il più strano. Usa Blinky: prende il vettore da Blinky a una casella davanti a Pac-Man
+// e lo raddoppia. Più Blinky è vicino a Pac-Man, più Inky lo chiude dall'altra parte.
+function inkyTarget(ghost) {
+  // Un vettore dice di quanto ci si sposta: dx in orizzontale, dy in verticale.
+  var p = pacTile()
+  var ahead = { x: p.x + pacman.dir.x * INKY_ANTICIPO, y: p.y + pacman.dir.y * INKY_ANTICIPO }   // 1. qualche casella davanti a Pac-Man
+  var b = ghostTile(blinky())
+  var dx = ahead.x - b.x                                       // 2. la freccia V che va da Blinky a quella casella
+  var dy = ahead.y - b.y
+  return { x: ahead.x + dx, y: ahead.y + dy }                  // 3. la stessa freccia, ripetuta: V x2
+}
+
+// LA MACCHINA A STATI dei fantasmi. Lo stato è nella variabile mode:
+//   'scatter'   sparpagliati: ognuno va verso il suo angolo (ghost.corner)
+//   'chase'     inseguono: ognuno usa la sua regola qui sopra
+// Le durate sono nella lista ONDATE (MODIFICA 9). Senza le pause il gioco sarebbe impossibile.
+// La paura (pillola grande) vale per ogni fantasma da solo: ghost.scared = true.
+
+function startModes() {           // all'inizio di ogni vita
+  mode = ONDATE.length ? 'scatter' : 'chase'   // si parte sparpagliati (con ONDATE vuota, subito all'inseguimento)
+  wave = 0          // quale ondata della lista ONDATE (la prima è la numero 0)
+  modeTimer = 0     // da quanti secondi siamo in questo stato
+}
+
+function updateMode() {           // 60 volte al secondo, durante la partita
+  if (frightTimer > 0) {          // la paura mette in pausa le ondate
+    frightTimer = frightTimer - 1 / 60
+    if (frightTimer <= 0) endFright()
+    return
+  }
+  // Quando un'ondata è finita si cambia stato: sparpagliati, inseguono, sparpagliati...
+  if (wave >= ONDATE.length) return            // finite le ondate: inseguono per sempre
+  modeTimer = modeTimer + 1 / 60               // i secondi passati in questo stato (60 fotogrammi al secondo)
+  if (modeTimer >= ONDATE[wave]) {
+    modeTimer = 0
+    wave = wave + 1
+    if (wave >= ONDATE.length || mode === 'scatter') setMode('chase')   // l'ultima ondata finisce sempre all'inseguimento
+    else setMode('scatter')
+  }
+}
+
+
+var TILE = 8                    // pixel per casella
+var COLS = 28, ROWS = 31
+var TOP = 3                     // il labirinto inizia 3 righe sotto il bordo: sopra ci sono i punti
+var MAZE_W = COLS * TILE        // 224 pixel
+
+// Le direzioni sono vettori: quanto cambiano x e y a ogni passo
+var UP = { x: 0, y: -1 }, LEFT = { x: -1, y: 0 }, DOWN = { x: 0, y: 1 }, RIGHT = { x: 1, y: 0 }
+var DIRECTIONS = [UP, LEFT, DOWN, RIGHT]   // l'ordine in cui le prova il gioco del 1980, a parità di distanza
+
+// La casa dei fantasmi, in pixel
+var HOME = { x: 13, y: 11 }     // la casella appena sopra la porta: lì tornano gli occhi
+var DOOR_X = 112                // il centro della porta
+var OUTSIDE_Y = 92              // sopra la porta
+var INSIDE_Y = 116              // in mezzo alla casa
+
+// ------------------------------------------------------------
+// LE VARIABILI DELLA PARTITA
+// ------------------------------------------------------------
+
+var grid = []                   // il labirinto di questa partita: i puntini mangiati spariscono
+var dotsLeft = 0
+var pacman = {}
+var ghosts = []
+var score = 0, bestScore = 0, lives = VITE, level = 1
+var gameState = 'menu'          // la macchina a stati del gioco: 'menu', 'ready', 'play', 'dying', 'clear', 'gameover'
+var stateTimer = 0
+var mode = 'chase', wave = 0, modeTimer = 0
+var frightTimer = 0, ghostsEaten = 0
+var roundTime = 0               // i secondi passati da quando è cominciata questa vita
+var freezeTimer = 0, popup = null
+var showTargets = MOSTRA_BERSAGLI
+var inPausa = false             // true = il gioco è fermo
+
+function isArt() { return TITOLO.indexOf('\n') >= 0 }          // true se il titolo è ASCII art
+document.title = isArt() ? 'PAC-MAN' : TITOLO
+
+// ------------------------------------------------------------
+// CASELLE E COORDINATE
+// ------------------------------------------------------------
+
+function wrapX(x) { return ((x % MAZE_W) + MAZE_W) % MAZE_W }       // il tunnel: chi esce da un lato rientra dall'altro
+function cell(col, row) {
+  if (row < 0 || row >= ROWS) return '#'
+  return grid[row][((col % COLS) + COLS) % COLS]
+}
+function isWall(col, row) { var c = cell(col, row); return c === '#' || c === '-' }
+function tileOf(thing) { return { x: Math.floor(wrapX(thing.x) / TILE), y: Math.floor(thing.y / TILE) } }
+function atCenter(thing) { return thing.x % TILE === 4 && thing.y % TILE === 4 }       // in mezzo a una casella
+function pacTile() { return tileOf(pacman) }
+function ghostTile(ghost) { return tileOf(ghost) }
+function blinky() { return ghosts[0] }
+function distance(a, b) { return Math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)) }
+function reverse(d) { return { x: -d.x, y: -d.y } }
+function same(a, b) { return a.x === b.x && a.y === b.y }
+
+function anyKey(list, pressedNow) {   // true se uno dei tasti della lista è premuto
+  for (var i = 0; i < list.length; i++) {
+    if (pressedNow ? keyp(list[i]) : key(list[i])) return true
+  }
+  return false
+}
+
+// ------------------------------------------------------------
+// INIZIO, VITE, LIVELLI
+// ------------------------------------------------------------
+
+function newGame() {
+  score = 0
+  lives = VITE
+  level = 1
+  startLevel()
+  melody(SUONO_START, ONDA, 7)
+}
+
+function startLevel() {
+  grid = []
+  dotsLeft = 0
+  for (var r = 0; r < ROWS; r++) {
+    var line = ((LABIRINTO[r] || '') + ' '.repeat(COLS)).slice(0, COLS)   // ogni riga lunga esattamente COLS caselle
+    grid.push(line.split(''))
+    for (var c = 0; c < COLS; c++) if (line[c] === '.' || line[c] === 'o') dotsLeft++
+  }
+  startRound()
+}
+
+function makeGhosts() {
+  ghosts = [
+    { name: 'BLINKY', nick: 'insegue', color: COLORE_BLINKY, corner: { x: 25, y: -3 }, rule: blinkyTarget, x: DOOR_X, y: OUTSIDE_Y, state: 'active', dir: LEFT },
+    { name: 'PINKY', nick: "fa l'imboscata", color: COLORE_PINKY, corner: { x: 2, y: -3 }, rule: pinkyTarget, x: DOOR_X, y: INSIDE_Y, state: 'house', dir: DOWN },
+    { name: 'INKY', nick: 'usa Blinky', color: COLORE_INKY, corner: { x: 27, y: 32 }, rule: inkyTarget, x: DOOR_X - 16, y: INSIDE_Y, state: 'house', dir: UP },
+    { name: 'CLYDE', nick: 'insegue e scappa', color: COLORE_CLYDE, corner: { x: 0, y: 32 }, rule: clydeTarget, x: DOOR_X + 16, y: INSIDE_Y, state: 'house', dir: UP },
+  ]
+  for (var i = 0; i < ghosts.length; i++) {
+    ghosts[i].move = 0
+    ghosts[i].scared = false
+    ghosts[i].target = null
+    ghosts[i].leaveAt = USCITA_FANTASMI[i] || 0
+  }
+}
+
+function startRound() {           // una vita nuova: tutti al loro posto
+  pacman = { x: 112, y: 188, dir: LEFT, next: LEFT, move: 0, moving: true, anim: 0 }
+  makeGhosts()
+  startModes()
+  frightTimer = 0
+  roundTime = 0
+  freezeTimer = 0
+  popup = null
+  gameState = 'ready'
+  stateTimer = 2
+}
+
+// ------------------------------------------------------------
+// PAC-MAN
+// ------------------------------------------------------------
+
+function readKeys() {
+  if (anyKey(TASTI_SU)) pacman.next = UP
+  if (anyKey(TASTI_GIU)) pacman.next = DOWN
+  if (anyKey(TASTI_SINISTRA)) pacman.next = LEFT
+  if (anyKey(TASTI_DESTRA)) pacman.next = RIGHT
+}
+
+function stepPacman() {           // un pixel alla volta
+  var p = pacman
+  if (same(p.next, reverse(p.dir))) p.dir = p.next          // tornare indietro si può sempre
+  if (atCenter(p)) {                                        // agli incroci si decide
+    var t = tileOf(p)
+    if (!isWall(t.x + p.next.x, t.y + p.next.y)) p.dir = p.next
+    if (isWall(t.x + p.dir.x, t.y + p.dir.y)) { p.moving = false; return }   // muro davanti: fermo
+  }
+  p.moving = true
+  p.anim++
+  p.x = wrapX(p.x + p.dir.x)
+  p.y = p.y + p.dir.y
+  eatDot(tileOf(p))
+}
+
+function eatDot(t) {
+  var c = grid[t.y][t.x]
+  if (c === '.') {
+    grid[t.y][t.x] = ' '
+    score = score + PUNTI_PUNTINO
+    dotsLeft--
+    tone(ONDA, SUONO_PUNTINO[dotsLeft % SUONO_PUNTINO.length], null, 3, 0.35)    // il "waka waka"
+  } else if (c === 'o') {
+    grid[t.y][t.x] = ' '
+    score = score + PUNTI_PILLOLA
+    dotsLeft--
+    startFright()
+  }
+}
+
+// ------------------------------------------------------------
+// LA PAURA: la pillola grande
+// ------------------------------------------------------------
+
+function startFright() {
+  if (DURATA_PAURA <= 0) return
+  frightTimer = DURATA_PAURA
+  ghostsEaten = 0
+  for (var i = 0; i < ghosts.length; i++) {
+    var g = ghosts[i]
+    if (g.state === 'active') { g.scared = true; g.dir = reverse(g.dir) }   // si spaventano e fanno inversione
+  }
+  tone(ONDA, SUONO_PILLOLA[0], SUONO_PILLOLA[1], 18, 0.4)
+}
+
+function endFright() {
+  frightTimer = 0
+  for (var i = 0; i < ghosts.length; i++) ghosts[i].scared = false
+}
+
+function setMode(newMode) {       // cambiare stato fa girare i fantasmi su sé stessi: così ve ne accorgete
+  if (newMode === mode) return
+  mode = newMode
+  for (var i = 0; i < ghosts.length; i++) {
+    var g = ghosts[i]
+    if (g.state === 'active' && !g.scared) g.dir = reverse(g.dir)
+  }
+}
+
+// ------------------------------------------------------------
+// I FANTASMI: dove vanno e come scelgono la strada
+// ------------------------------------------------------------
+
+// Il bersaglio di un fantasma in questo momento: dipende dal suo stato
+function ghostTarget(g) {
+  if (g.state === 'eyes') return HOME          // mangiato: gli occhi tornano a casa
+  if (g.scared) return null                    // spaventato: gira a caso
+  if (mode === 'scatter') return g.corner      // sparpagliati: ognuno nel suo angolo
+  return g.rule(g)                             // inseguono: la regola di quel fantasma
+}
+
+// A ogni incrocio: tra le strade libere (mai indietro) prende quella che lo porta più vicino al bersaglio.
+// È tutta qui l'intelligenza dei fantasmi.
+function chooseDirection(g, t) {
+  var options = []
+  for (var i = 0; i < DIRECTIONS.length; i++) {
+    var d = DIRECTIONS[i]
+    if (same(d, reverse(g.dir))) continue                      // non si torna indietro
+    if (isWall(t.x + d.x, t.y + d.y)) continue                 // non si passa nei muri
+    options.push(d)
+  }
+  if (options.length === 0) return reverse(g.dir)              // vicolo cieco
+  g.target = ghostTarget(g)
+  if (!g.target) return options[Math.floor(Math.random() * options.length)]   // senza bersaglio: a caso
+  var best = options[0], bestDistance = Infinity
+  for (var k = 0; k < options.length; k++) {
+    var next = { x: t.x + options[k].x, y: t.y + options[k].y }
+    var dist = distance(next, g.target)
+    if (dist < bestDistance) { bestDistance = dist; best = options[k] }
+  }
+  return best
+}
+
+function ghostSpeed(g) {
+  if (g.state === 'eyes') return VELOCITA_OCCHI
+  if (g.state !== 'active') return VELOCITA_FANTASMI / 2      // dentro casa vanno piano
+  var t = tileOf(g)
+  if (t.y === 14 && (t.x <= 5 || t.x >= 22)) return VELOCITA_FANTASMI / 2   // nel tunnel rallentano
+  if (g.scared) return VELOCITA_PAURA
+  return VELOCITA_FANTASMI + (level - 1) * 0.4                 // ogni livello un po' più veloci
+}
+
+function stepGhost(g) {           // un pixel alla volta, secondo lo stato del fantasma
+  if (g.state === 'house') {      // aspetta il suo turno, su e giù
+    if (roundTime >= g.leaveAt) { g.state = 'leaving'; return }
+    g.y = g.y + g.dir.y
+    if (g.y <= INSIDE_Y - 4) g.dir = DOWN
+    if (g.y >= INSIDE_Y + 4) g.dir = UP
+    return
+  }
+  if (g.state === 'leaving') {    // al centro, poi su dalla porta
+    if (g.x !== DOOR_X) g.x = g.x + (g.x < DOOR_X ? 1 : -1)
+    else if (g.y > OUTSIDE_Y) g.y = g.y - 1
+    else { g.state = 'active'; g.dir = LEFT; g.move = 0 }
+    return
+  }
+  if (g.state === 'entering') {   // gli occhi rientrano e il fantasma rinasce
+    if (g.x !== DOOR_X) g.x = g.x + (g.x < DOOR_X ? 1 : -1)
+    else if (g.y < INSIDE_Y) g.y = g.y + 1
+    else g.state = 'leaving'
+    return
+  }
+  if (atCenter(g)) {              // 'active' o 'eyes': nel labirinto
+    var t = tileOf(g)
+    if (g.state === 'eyes' && same(t, HOME)) { g.state = 'entering'; return }
+    g.dir = chooseDirection(g, t)
+  }
+  g.x = wrapX(g.x + g.dir.x)
+  g.y = g.y + g.dir.y
+}
+
+function moveThing(thing, tilesPerSecond, step) {   // da caselle al secondo a pixel per fotogramma
+  thing.move = thing.move + tilesPerSecond * TILE / 60
+  while (thing.move >= 1) { thing.move = thing.move - 1; step(thing) }
+}
+
+// ------------------------------------------------------------
+// LE REGOLE: chi tocca chi
+// ------------------------------------------------------------
+
+function checkCollisions() {
+  for (var i = 0; i < ghosts.length; i++) {
+    var g = ghosts[i]
+    if (g.state !== 'active') continue
+    var dx = Math.abs(wrapX(g.x - pacman.x + MAZE_W / 2) - MAZE_W / 2), dy = Math.abs(g.y - pacman.y)
+    if (dx >= 6 || dy >= 6) continue
+    if (g.scared) {               // fantasma blu: Pac-Man se lo mangia
+      var points = PUNTI_FANTASMA * Math.pow(2, ghostsEaten)     // 200, 400, 800, 1600
+      ghostsEaten++
+      score = score + points
+      g.scared = false
+      g.state = 'eyes'
+      popup = { x: g.x, y: g.y, text: String(points) }
+      freezeTimer = 0.6
+      tone(ONDA, SUONO_FANTASMA[0], SUONO_FANTASMA[1], 20, 0.5)
+    } else {                      // fantasma normale: si perde una vita
+      gameState = 'dying'
+      stateTimer = 1.6
+      melody(SUONO_MORTE, ONDA, 6, 20)
+      return
+    }
+  }
+}
+
+function updatePlay() {
+  roundTime = roundTime + 1 / 60
+  if (freezeTimer > 0) { freezeTimer = freezeTimer - 1 / 60; if (freezeTimer <= 0) popup = null; return }
+  readKeys()
+  updateMode()
+  moveThing(pacman, VELOCITA_PACMAN, stepPacman)
+  for (var i = 0; i < ghosts.length; i++) moveThing(ghosts[i], ghostSpeed(ghosts[i]), stepGhost)
+  checkCollisions()
+  if (gameState === 'play' && dotsLeft === 0) { gameState = 'clear'; stateTimer = 2 }
+}
+
+// ------------------------------------------------------------
+// DISEGNARE: lo schermo si ridisegna da zero a ogni fotogramma
+// ------------------------------------------------------------
+
+var GHOST_BODY = [
+  '.....####.....',
+  '...########...',
+  '..##########..',
+  '.############.',
+  '.############.',
+  '.############.',
+  '##############',
+  '##############',
+  '##############',
+  '##############',
+  '##############',
+  '##############',
+]
+var GHOST_SKIRT = [
+  ['##.###..###.##', '#...##..##...#'],
+  ['####.####.####', '.##...##...##.'],
+]
+
+function drawWalls(color) {       // i muri: una riga dove il muro incontra il corridoio
+  for (var r = 0; r < ROWS; r++) {
+    for (var c = 0; c < COLS; c++) {
+      var ch = grid[r][c]
+      var x = c * TILE, y = (r + TOP) * TILE
+      if (ch === '-') { rect(x, y + 3, TILE, 2, COLORE_PINKY); continue }
+      if (ch !== '#') continue
+      var up = !isWall(c, r - 1), down = !isWall(c, r + 1), left = !isWall(c - 1, r), right = !isWall(c + 1, r)
+      if (up) rect(left ? x + 3 : x, y + 3, (right ? x + 5 : x + 8) - (left ? x + 3 : x), 1, color)
+      if (down) rect(left ? x + 3 : x, y + 4, (right ? x + 5 : x + 8) - (left ? x + 3 : x), 1, color)
+      if (left) rect(x + 3, up ? y + 3 : y, 1, (down ? y + 5 : y + 8) - (up ? y + 3 : y), color)
+      if (right) rect(x + 4, up ? y + 3 : y, 1, (down ? y + 5 : y + 8) - (up ? y + 3 : y), color)
+      // gli angoli interni: muro sopra e a lato, corridoio in diagonale
+      if (!up && !left && !isWall(c - 1, r - 1)) { rect(x, y + 3, 4, 1, color); rect(x + 3, y, 1, 4, color) }
+      if (!up && !right && !isWall(c + 1, r - 1)) { rect(x + 4, y + 3, 4, 1, color); rect(x + 4, y, 1, 4, color) }
+      if (!down && !left && !isWall(c - 1, r + 1)) { rect(x, y + 4, 4, 1, color); rect(x + 3, y + 4, 1, 4, color) }
+      if (!down && !right && !isWall(c + 1, r + 1)) { rect(x + 4, y + 4, 4, 1, color); rect(x + 4, y + 4, 1, 4, color) }
+    }
+  }
+}
+
+function drawDots() {
+  var blink = time() % 400 < 200
+  for (var r = 0; r < ROWS; r++) {
+    for (var c = 0; c < COLS; c++) {
+      var x = c * TILE, y = (r + TOP) * TILE
+      if (grid[r][c] === '.') rect(x + 3, y + 3, 2, 2, COLORE_PUNTINI)
+      if (grid[r][c] === 'o' && (blink || gameState !== 'play')) circ(x + 4, y + 4, 3, COLORE_PUNTINI)
+    }
+  }
+}
+
+function drawPacmanAt(cx, cy, mouth, facing, color) {   // un cerchio a cui manca la bocca
+  var r = 6
+  for (var dy = -r; dy <= r; dy++) {
+    for (var dx = -r; dx <= r; dx++) {
+      if (dx * dx + dy * dy > r * r + r * 0.8) continue
+      var a = Math.atan2(dy, dx) - facing
+      while (a > Math.PI) a -= Math.PI * 2
+      while (a < -Math.PI) a += Math.PI * 2
+      if (Math.abs(a) < mouth && (dx !== 0 || dy !== 0)) continue
+      pix(cx + dx, cy + dy, color)
+    }
+  }
+}
+
+function drawPacman() {
+  var mouth = pacman.moving ? 0.1 + Math.abs(Math.sin(pacman.anim * 0.2)) * 0.75 : 0.5
+  if (gameState === 'dying') mouth = Math.min(Math.PI, 0.3 + (1.6 - stateTimer) * 2.2)   // si apre fino a sparire
+  if (gameState === 'dying' && stateTimer < 0.3) return
+  // vero e falso a turno: cambia valore ogni 1/8 di secondo
+  var lampeggia = Math.floor(stateTimer * 8) % 2 === 0
+  if (gameState === 'dying' && lampeggia) return
+  drawPacmanAt(Math.round(pacman.x), Math.round(pacman.y) + TOP * TILE, mouth, Math.atan2(pacman.dir.y, pacman.dir.x), COLORE_PACMAN)
+}
+
+function drawGhostAt(x, y, color, dir, scared, eyesOnly, frame) {
+  var sx = Math.round(x) - 7, sy = Math.round(y) - 7
+  if (!eyesOnly) {
+    for (var r = 0; r < GHOST_BODY.length; r++) {
+      for (var c = 0; c < 14; c++) if (GHOST_BODY[r][c] === '#') pix(sx + c, sy + r, color)
+    }
+    var skirt = GHOST_SKIRT[frame]
+    for (var s = 0; s < 2; s++) {
+      for (var k = 0; k < 14; k++) if (skirt[s][k] === '#') pix(sx + k, sy + 12 + s, color)
+    }
+  }
+  if (scared) {                   // la faccia spaventata: occhietti e bocca a zig zag
+    var face = color === 'white' ? '#ff0000' : '#ffb8ae'
+    rect(sx + 4, sy + 5, 2, 2, face); rect(sx + 8, sy + 5, 2, 2, face)
+    for (var m = 0; m < 10; m++) pix(sx + 2 + m, sy + 9 + (m % 2), face)
+    return
+  }
+  var d = dir || { x: 0, y: 0 }
+  for (var e = 0; e < 2; e++) {   // due occhi che guardano dove va
+    var ex = sx + 2 + e * 6 + d.x, ey = sy + 3 + d.y
+    rect(ex, ey + 1, 4, 3, 'white'); rect(ex + 1, ey, 2, 5, 'white')
+    rect(ex + 1 + d.x, ey + 1 + d.y + 1, 2, 2, '#2121de')
+  }
+}
+
+function drawGhosts() {
+  var frame = Math.floor(time() / 150) % 2
+  for (var i = ghosts.length - 1; i >= 0; i--) {
+    var g = ghosts[i]
+    var color = g.color
+    if (g.scared) color = frightTimer < 2 && Math.floor(frightTimer * 4) % 2 === 0 ? 'white' : COLORE_PAURA   // lampeggia: sta per finire
+    var eyes = g.state === 'eyes' || g.state === 'entering'
+    drawGhostAt(g.x, g.y + TOP * TILE, color, g.dir, g.scared, eyes, frame)
+  }
+}
+
+function dotted(x0, y0, x1, y1, color) {   // una linea tratteggiata da un punto a un altro
+  var steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))
+  for (var i = 0; i <= steps; i += 3) pix(x0 + (x1 - x0) * i / steps, y0 + (y1 - y0) * i / steps, color)
+}
+
+function drawTargets() {          // il bersaglio di ogni fantasma: un quadratino del suo colore
+  for (var i = 0; i < ghosts.length; i++) {
+    var g = ghosts[i]
+    if (g.state !== 'active' || g.scared) continue
+    var target = ghostTarget(g)
+    var gx = Math.round(g.x), gy = Math.round(g.y) + TOP * TILE
+    if (!target) { print('?', gx - 2, gy - 15, g.color); continue }    // nessuna regola: gira a caso
+    var tx = target.x * TILE, ty = (target.y + TOP) * TILE
+    dotted(gx, gy, tx + 4, ty + 4, g.color)
+    rectb(tx, ty, TILE, TILE, g.color)
+    rect(tx + 3, ty + 3, 2, 2, g.color)
+  }
+}
+
+function modeLabel() {
+  if (frightTimer > 0) return 'PAURA ' + Math.ceil(frightTimer)
+  if (mode === 'scatter') return 'SPARPAGLIATI'
+  return 'INSEGUONO'
+}
+
+function drawHud() {
+  print('PUNTI ' + score, 4, 4, COLORE_TESTO)
+  var best = 'RECORD ' + Math.max(bestScore, score)
+  print(best, 220 - textWidth(best), 4, COLORE_TESTO)
+  printCentered('LIVELLO ' + level, 14, 13)
+  for (var i = 0; i < Math.min(lives, 4); i++) drawPacmanAt(10 + i * 16, 278, 0.6, Math.PI, COLORE_PACMAN)
+  if (lives > 4) print('x' + lives, 72, 276, COLORE_PACMAN)
+  var label = modeLabel()
+  print(label, 220 - textWidth(label), 274, frightTimer > 0 ? '#8fa0ff' : COLORE_TESTO)
+  print('T bersagli', 104, 276, 13)
+}
+
+function drawGame() {
+  cls(COLORE_SFONDO)
+  var flash = gameState === 'clear' && Math.floor(stateTimer * 4) % 2 === 0
+  drawWalls(flash ? 'white' : COLORE_MURI)
+  drawDots()
+  if (showTargets && gameState === 'play') drawTargets()
+  if (gameState !== 'dying' || stateTimer > 1.2) { if (gameState !== 'clear') drawGhosts() }
+  if (!popup) drawPacman()
+  else print(popup.text, Math.round(popup.x) - textWidth(popup.text) / 2, Math.round(popup.y) + TOP * TILE - 3, '#00ffff')
+  drawHud()
+}
+
+function printCentered(text, y, color, scale) {
+  print(text, (224 - textWidth(text, scale)) / 2, y, color, scale)
+}
+
+function drawMenu() {
+  cls(COLORE_SFONDO)
+  if (isArt()) printArt(TITOLO, 50, COLORE_PACMAN)
+  else printCentered(TITOLO, 34, COLORE_PACMAN, 4)
+  printCentered('i quattro fantasmi del 1980', 76, COLORE_TESTO)
+  var names = [['BLINKY', 'insegue', COLORE_BLINKY], ['PINKY', "fa l'imboscata", COLORE_PINKY], ['INKY', 'usa Blinky', COLORE_INKY], ['CLYDE', 'insegue e scappa', COLORE_CLYDE]]
+  for (var i = 0; i < names.length; i++) {
+    var y = 104 + i * 26
+    drawGhostAt(44, y + 3, names[i][2], RIGHT, false, false, Math.floor(time() / 150) % 2)
+    print(names[i][0], 62, y - 3, names[i][2])
+    print(names[i][1], 112, y - 3, 13)
+  }
+  var x = (time() / 12) % 300 - 40          // Pac-Man che attraversa lo schermo
+  drawPacmanAt(x, 220, 0.1 + Math.abs(Math.sin(time() / 80)) * 0.7, 0, COLORE_PACMAN)
+  for (var k = 0; k < 4; k++) drawGhostAt(x - 22 - k * 16, 220, names[k][2], RIGHT, false, false, Math.floor(time() / 150) % 2)
+  if (time() % 1000 < 650) printCentered('premi INVIO per giocare', 246, COLORE_TESTO)
+  printCentered('frecce o W A S D   T bersagli', 262, 13)
+}
+
+function drawGameOver() {
+  rect(40, 120, 144, 60, COLORE_SFONDO)
+  rectb(40, 120, 144, 60, COLORE_MURI)
+  printCentered('GAME OVER', 128, '#ff0000', 2)
+  printCentered('punti ' + score + '   record ' + bestScore, 152, COLORE_TESTO)
+  printCentered('INVIO per rigiocare', 166, 13)
+}
+
+// ------------------------------------------------------------
+// IL GAME LOOP: TIC() viene chiamata 60 volte al secondo
+// ------------------------------------------------------------
+
+function TIC() {
+  if (keyp(TASTO_BERSAGLI)) showTargets = !showTargets
+  if (keyp(TASTO_PAUSA) && gameState === 'play') inPausa = !inPausa
+  if (inPausa) {                  
+    drawGame()
+    printCentered('PAUSA', (17 + TOP) * TILE - 6, COLORE_PACMAN, 2)
+    return
+  }
+  if (gameState === 'menu') {
+    drawMenu()
+    if (anyKey(TASTI_START, true)) newGame()
+    return
+  }
+  if (gameState === 'gameover') {
+    drawGame()
+    drawGameOver()
+    if (anyKey(TASTI_START, true)) newGame()
+    return
+  }
+  if (gameState === 'ready') {    // "PRONTI!" per due secondi
+    drawGame()
+    printCentered('PRONTI!', (17 + TOP) * TILE - 2, COLORE_PACMAN)
+    stateTimer = stateTimer - 1 / 60
+    if (stateTimer <= 0) gameState = 'play'
+    return
+  }
+  if (gameState === 'dying') {
+    drawGame()
+    stateTimer = stateTimer - 1 / 60
+    if (stateTimer <= 0) {
+      lives--
+      if (lives > 0) startRound()
+      else { gameState = 'gameover'; bestScore = Math.max(bestScore, score) }
+    }
+    return
+  }
+  if (gameState === 'clear') {    // livello finito: il labirinto lampeggia
+    drawGame()
+    stateTimer = stateTimer - 1 / 60
+    if (stateTimer <= 0) { level++; startLevel() }
+    return
+  }
+  updatePlay()
+  drawGame()
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                                                                  ║
+// ║                ███████╗████████╗ ██████╗ ██████╗                 ║
+// ║                ██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗                ║
+// ║                ███████╗   ██║   ██║   ██║██████╔╝                ║
+// ║                ╚════██║   ██║   ██║   ██║██╔═══╝                 ║
+// ║                ███████║   ██║   ╚██████╔╝██║                     ║
+// ║                ╚══════╝   ╚═╝    ╚═════╝ ╚═╝                     ║
+// ║                                                                  ║
+// ║                  DA QUI IN GIÙ NON SI MODIFICA                   ║
+// ║                 3. MOTORE DEL GIOCO: NON TOCCARE                 ║
+// ║                                                                  ║
+// ║  Un piccolo TIC-80 fatto in casa: schermo 224x288 come la sala   ║
+// ║  giochi del 1980, disegnato 3 volte più grande, colori, testi,   ║
+// ║  tasti, suoni e il ciclo che chiama TIC() 60 volte al secondo.   ║
+// ║                                                                  ║
+// ╚══════════════════════════════════════════════════════════════════╝
+//
+// Cosa offre al gioco:
+//   cls(colore)  pix(x, y, colore)  rect(x, y, w, h, colore)  rectb(...)  circ(x, y, raggio, colore)
+//   print(testo, x, y, colore, grandezza)  textWidth(testo, grandezza)  printArt(testo, yCentro, colore)
+//   key(codice)  keyp(codice)  time()
+//   tone(onda, nota, notaFinale, fotogrammi, volume, ritardo)  melody(note, onda, fotogrammiPerNota, ritardo)
+
+var PAL_VERDE = ['#0A0F0A', '#0E3B1F', '#00FF66', '#7DFFB0', '#D8FFE6', '#00B847', '#008A3A', '#0F5C2E', '#123A22', '#1F7A44', '#B8FFD2', '#5CE69A', '#E8FFF0', '#9DC9A4', '#3E5744', '#1E2A22']
+var PAL_TIC80 = ['#1a1c2c', '#5d275d', '#b13e53', '#ef7d57', '#ffcd75', '#a7f070', '#38b764', '#257179', '#29366f', '#3b5dc9', '#41a6f6', '#73eff7', '#f4f4f4', '#94b0c2', '#566c86', '#333c57']
+var PAL = GREEN ? PAL_VERDE : PAL_TIC80
+
+var S = 3, W = 224, H = 288
+var cv = document.getElementById('screen'), gfx = cv.getContext('2d')
+cv.width = W * S; cv.height = H * S
+
+function col(c) {
+  if (typeof c === 'string') return c                        // '#ff4400' oppure 'gold'
+  return PAL[((c | 0) % 16 + 16) % 16]                        // un numero: la posizione nella tavolozza
+}
+function cls(c) { if (c == null) c = 0; gfx.fillStyle = col(c); gfx.fillRect(0, 0, cv.width, cv.height); document.body.style.background = col(c) }
+function pix(x, y, c) { gfx.fillStyle = col(c); gfx.fillRect(Math.round(x) * S, Math.round(y) * S, S, S) }
+function rect(x, y, w, h, c) { gfx.fillStyle = col(c); gfx.fillRect(Math.round(x) * S, Math.round(y) * S, Math.round(w) * S, Math.round(h) * S) }
+function rectb(x, y, w, h, c) { rect(x, y, w, 1, c); rect(x, y + h - 1, w, 1, c); rect(x, y, 1, h, c); rect(x + w - 1, y, 1, h, c) }
+function circ(x, y, r, c) {
+  gfx.fillStyle = col(c)
+  for (var dy = -r; dy <= r; dy++) { var w = Math.floor(Math.sqrt(r * r - dy * dy + r * 0.8)); gfx.fillRect((Math.round(x) - w) * S, (Math.round(y) + dy) * S, (w * 2 + 1) * S, S) }
+}
+var T0 = performance.now()
+function time() { return performance.now() - T0 }
+
+// ---------- i testi ----------
+function fontFamily() {
+  var f = (typeof FONT === 'string' && FONT) ? FONT : 'monospace'
+  if (f === 'monospace' || f === 'serif' || f === 'sans-serif') return f
+  return '"' + f + '", monospace'
+}
+function print(text, x, y, c, scale) {
+  text = String(text); scale = scale || 1
+  gfx.font = 'bold ' + (7 * scale * S) + 'px ' + fontFamily()
+  var w = Math.ceil(gfx.measureText(text).width / S)
+  gfx.fillStyle = col(c == null ? 12 : c); gfx.textBaseline = 'top'
+  gfx.fillText(text, Math.round(x * S), Math.round(y * S))
+  return w
+}
+function textWidth(text, scale) {
+  gfx.font = 'bold ' + (7 * (scale || 1) * S) + 'px ' + fontFamily()
+  return Math.ceil(gfx.measureText(String(text)).width / S)
+}
+function printArt(text, centerY, c) {   // ogni carattere in una casella fissa, con un font monospace
+  var lines = String(text).split('\n')
+  while (lines.length && !lines[0].trim()) lines.shift()
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop()
+  var longest = 1
+  for (var i = 0; i < lines.length; i++) longest = Math.max(longest, lines[i].replace(/\s+$/, '').length)
+  var cw = Math.min(5, (W - 12) / longest), ch = cw * 1.6
+  var x0 = (W - longest * cw) / 2, y0 = centerY - lines.length * ch / 2
+  gfx.font = 'bold ' + (ch * S) + 'px Menlo, Consolas, "Courier New", monospace'
+  gfx.fillStyle = col(c == null ? 12 : c); gfx.textBaseline = 'top'
+  for (var r = 0; r < lines.length; r++) {
+    for (var k = 0; k < lines[r].length; k++) {
+      if (lines[r][k] !== ' ') gfx.fillText(lines[r][k], (x0 + k * cw) * S, (y0 + r * ch) * S)
+    }
+  }
+}
+
+// ---------- i tasti (codici TIC-80: A..Z = 1..26, spazio 48, invio 50, frecce 58 59 60 61) ----------
+var CODE = {}
+for (var ci = 0; ci < 26; ci++) CODE['Key' + String.fromCharCode(65 + ci)] = ci + 1
+for (var cd = 0; cd < 10; cd++) CODE['Digit' + cd] = 27 + cd
+CODE.Space = 48; CODE.Enter = 50; CODE.NumpadEnter = 50; CODE.ArrowUp = 58; CODE.ArrowDown = 59; CODE.ArrowLeft = 60; CODE.ArrowRight = 61
+var held = {}, fresh = {}
+function key(k) { return !!held[k] }
+function keyp(k) { return !!fresh[k] }
+addEventListener('keydown', function (e) { unlockAudio(); var k = CODE[e.code]; if (k == null) return; e.preventDefault(); if (!held[k]) fresh[k] = true; held[k] = true })
+addEventListener('keyup', function (e) { var k = CODE[e.code]; if (k != null) held[k] = false })
+addEventListener('blur', function () { held = {} })
+addEventListener('pointerdown', function () { cv.focus(); unlockAudio() })
+
+// ---------- i suoni: onde 8 bit con Web Audio ----------
+// Il browser accende l'audio solo dopo il primo tasto o clic: ci pensa unlockAudio().
+var ac = null
+function unlockAudio() {
+  try {
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)()
+    if (ac.state === 'suspended') ac.resume()
+  } catch (e) {}
+}
+var NOTES = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 }
+function noteNumber(n) {   // 'C-5' diventa un numero (69 = A-4 = 440 Hz); un numero resta un numero
+  if (typeof n === 'number') return n
+  var m = /^([A-G]#?)-?(\d)$/.exec(String(n).toUpperCase())
+  return m ? NOTES[m[1]] + 12 * (+m[2] + 1) : 60
+}
+function noteFreq(n) { return 440 * Math.pow(2, (noteNumber(n) - 69) / 12) }
+function soundOn() { return !!ac && SUONI_ATTIVI !== false }
+function tone(wave, note, endNote, frames, volume, delayFrames) {
+  if (!soundOn()) return
+  var t = ac.currentTime + (delayFrames || 0) / 60, d = Math.max(0.02, (frames || 8) / 60)
+  var v = 0.25 * Math.max(0, Math.min(1, VOLUME)) * (volume == null ? 1 : volume)
+  if (v <= 0) return
+  var gain = ac.createGain()
+  gain.gain.setValueAtTime(v, t); gain.gain.setValueAtTime(v, t + d * 0.6); gain.gain.exponentialRampToValueAtTime(0.0005, t + d)
+  gain.connect(ac.destination)
+  if (wave === 'noise') {
+    var buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * d), ac.sampleRate), data = buf.getChannelData(0)
+    for (var i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+    var src = ac.createBufferSource(); src.buffer = buf; src.connect(gain); src.start(t)
+    return
+  }
+  var o = ac.createOscillator()
+  o.type = wave || 'square'
+  o.frequency.setValueAtTime(noteFreq(note), t)
+  if (endNote != null) o.frequency.exponentialRampToValueAtTime(noteFreq(endNote), t + d)
+  o.connect(gain); o.start(t); o.stop(t + d + 0.02)
+}
+function melody(notes, wave, framesEach, delayFrames) {
+  framesEach = framesEach || 6
+  for (var i = 0; i < notes.length; i++) tone(wave, notes[i], null, framesEach, 1, (delayFrames || 0) + i * framesEach)
+}
+
+// ---------- il ciclo: chiama TIC() 60 volte al secondo ----------
+var acc = 0, last = 0
+function loop(t) {
+  acc += Math.min(100, last ? t - last : 16.7); last = t
+  while (acc >= 1000 / 60) { TIC(); fresh = {}; acc -= 1000 / 60 }
+  requestAnimationFrame(loop)
+}
+// parte dopo aver aspettato il font scelto in FONT (al massimo 3 secondi)
+cv.focus()
+var fontWait = new Promise(function (done) { setTimeout(done, 3000) })
+try { fontWait = Promise.race([document.fonts.load('bold 24px ' + fontFamily()), fontWait]) } catch (e) {}
+fontWait.then(function () { requestAnimationFrame(loop) }, function () { requestAnimationFrame(loop) })
+</script>
+</body>
+</html>

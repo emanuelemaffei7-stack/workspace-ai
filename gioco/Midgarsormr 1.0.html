@@ -1,0 +1,563 @@
+<!doctype html>
+<!--
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║   ███████╗███╗   ██╗ █████╗ ██╗  ██╗███████╗      ▄█▀▀▀▀█▄       ║
+║   ██╔════╝████╗  ██║██╔══██╗██║ ██╔╝██╔════╝      ██    ▀▀       ║
+║   ███████╗██╔██╗ ██║███████║█████╔╝ █████╗        ▀█▄▄▄▄▄        ║
+║   ╚════██║██║╚██╗██║██╔══██║██╔═██╗ ██╔══╝            ▀▀█▄       ║
+║   ███████║██║ ╚████║██║  ██║██║  ██╗███████╗      ▄▄    ██       ║
+║   ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝      ▀█▄▄▄▄█▀ ●     ║
+║                                                                  ║
+║             Programmazione I, IUDAV  //  Esercizio 2             ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  IL GIOCO   Il serpente mangia le sfere e si allunga. Se sbatte, la partita finisce.
+  COMANDI    Frecce oppure W A S D per girare. INVIO per iniziare e per rigiocare.
+
+  COME SI LAVORA
+    1. Cambia un valore nella sezione "1. IMPOSTAZIONI" qui sotto.
+    2. Salva con Ctrl+S (Mac: Cmd+S).
+    3. In Chrome premi F5 (Mac: Cmd+R) e guarda cosa è cambiato.
+
+  LE 10 MODIFICHE (cerca "MODIFICA 1" ... "MODIFICA 10")
+     1. Il titolo                     TITOLO
+     2. Il font del testo             FONT
+     3. Il colore del serpente        COLORE_TESTA, COLORE_CORPO
+     4. Il colore del cibo            COLORE_CIBO
+     5. Il colore dello sfondo        COLORE_SFONDO
+     6. La velocità                   VELOCITA
+     7. La lunghezza iniziale         LUNGHEZZA_INIZIALE
+     8. Quanto cresce a ogni cibo     CRESCITA
+     9. I bordi                       MURI_ATTIVI (true muore, false riappare dall'altro lato)
+    10. I suoni                       SUONI_ATTIVI, VOLUME, ONDA e le note SUONO_...
+
+  BONUS   ACCELERA, NUMERO_CIBI, il game over quando il serpente si morde (TODO in hitsItself),
+          un cibo d'oro che vale di più e sparisce dopo qualche secondo (fatti aiutare da Claude Code).
+-->
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SNAKE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Changa+One:ital@0;1&family=Share+Tech&display=swap" rel="stylesheet">
+<!--
+  FONT DA GOOGLE FONTS (facoltativo, serve internet)
+  Scegliete il font su fonts.google.com, copiate il <link> che vi dà e incollatelo qui sotto,
+  poi scrivete il nome in FONT, es. FONT = 'Press Start 2P'.
+-->
+
+<style>
+  html, body { margin: 0; height: 100%; background: #0A0F0A; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; outline: none; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="screen" tabindex="0"></canvas>
+<script>
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                                                                  ║
+// ║   ███████╗███╗   ██╗ █████╗ ██╗  ██╗███████╗      ▄█▀▀▀▀█▄       ║
+// ║   ██╔════╝████╗  ██║██╔══██╗██║ ██╔╝██╔════╝      ██    ▀▀       ║
+// ║   ███████╗██╔██╗ ██║███████║█████╔╝ █████╗        ▀█▄▄▄▄▄        ║
+// ║   ╚════██║██║╚██╗██║██╔══██║██╔═██╗ ██╔══╝            ▀▀█▄       ║
+// ║   ███████║██║ ╚████║██║  ██║██║  ██╗███████╗      ▄▄    ██       ║
+// ║   ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝      ▀█▄▄▄▄█▀ ●     ║
+// ║                                                                  ║
+// ║             Programmazione I, IUDAV  //  Esercizio 2             ║
+// ║                                                                  ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                                                                  ║
+// ║   1. IMPOSTAZIONI: QUI POTETE CAMBIARE TUTTO                     ║
+// ║   Cambia un valore, salva (Ctrl+S), ricarica Chrome (F5).        ║
+// ║                                                                  ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+var TITOLO = 'MIDGARSORMR'            // MODIFICA 1   il titolo (menu e scheda del browser)
+//   Anche in ASCII art: generala su https://patorjk.com/software/taag/ e incollala così:
+//   var TITOLO = String.raw`
+//    ____  _   _    _    _  __ _____
+//   / ___|| \ | |  / \  | |/ /| ____|
+//   \___ \|  \| | / _ \ | ' / |  _|
+//    ___) | |\  |/ ___ \| . \ | |___
+//   |____/|_| \_/_/   \_\_|\_\|_____|
+//   `
+
+var FONT = 'Share Tech'          // MODIFICA 2   il font dei testi. Senza internet funzionano:
+                                //              'monospace' 'Courier New' 'Arial' 'Georgia'
+                                //              'Impact' 'Comic Sans MS' 'Trebuchet MS' 'Verdana'
+
+// I COLORI si scrivono in tre modi:
+//   2            un numero da 0 a 15: un colore della tavolozza (GREEN qui sotto)
+//   '#ff4400'    un colore esadecimale, tra apici
+//   'gold'       un nome inglese, tra apici: 'red' 'gold' 'hotpink' 'white' 'orange' ...
+var COLORE_TESTA = '#B8860B' 	           // MODIFICA 3   la testa del serpente
+var COLORE_CORPO = '#560319'            // MODIFICA 3   il corpo del serpente
+var COLORE_CIBO = '#6700B3'            // MODIFICA 4   il cibo
+var COLORE_SFONDO = '#177245'           // MODIFICA 5   lo sfondo
+var GREEN = false                //              tavolozza: true = verde del corso, false = colorata (TIC-80)
+
+var VELOCITA = 10                // MODIFICA 6   quante caselle fa il serpente in un secondo
+var LUNGHEZZA_INIZIALE = 2      // MODIFICA 7   quanti pezzi ha all'inizio
+var CRESCITA = 1                // MODIFICA 8   quanti pezzi si aggiungono a ogni cibo
+var MURI_ATTIVI = false         // MODIFICA 9   true = i bordi uccidono, false = riappare dal lato opposto
+
+// I SUONI: le note si scrivono come 'C-5' (do), 'D-5' (re), 'E-5' (mi) ... il numero è l'ottava
+var SUONI_ATTIVI = true         // MODIFICA 10  true = suoni accesi, false = spenti
+var VOLUME = 0.5                // MODIFICA 10  da 0 (muto) a 1 (massimo)
+var ONDA = 'triangle'             // MODIFICA 10  il timbro: 'square' (8 bit), 'triangle', 'sawtooth', 'sine'
+var SUONO_START = ['C-5', 'E-5', 'G-5', 'C-6', 'E-6', 'G-6', 'C-7']       // MODIFICA 10  la melodia di inizio partita
+var SUONO_CIBO = ['E-5', 'B-5']                               // MODIFICA 10  il cibo: sale di mezzo tono a ogni boccone
+var SUONO_GIRA = ['G-3']                               // MODIFICA 10  il tic quando il serpente gira
+var SUONO_GAMEOVER = ['G-4', 'E-4', 'C-4', 'G-3']    // MODIFICA 10  la melodia del game over (scende)
+var SUONO_RECORD = ['C-5', 'C-5', 'C-5', 'C-5', '---', '---', 'G#4', '---', 'A#4', '---', 'C-5', '---', '---', 'A#4', 'C-5', '---', '---', '---']      // MODIFICA 10  la melodia del nuovo record
+
+// Per i BONUS e per chi vuole provare
+var ACCELERA = 0.2                // BONUS  caselle al secondo in più dopo ogni cibo (0 = sempre uguale)
+var NUMERO_CIBI = 1            // BONUS  quanti cibi ci sono sullo schermo insieme
+var PUNTI_CIBO = 100             //        quanti punti vale un cibo
+var DIMENSIONE_CELLA = 8        //        quanti pixel è grande una casella (prova 4, 6, 10, 12)
+var COLORE_BORDO = 'white'            //        il bordo del campo
+var COLORE_TESTO = 'white'           //        le scritte
+
+// I tasti, con i codici di TIC-80: frecce 58 59 60 61, W 23, A 1, S 19, D 4, invio 50, spazio 48
+var TASTI_SU = [58, 23]
+var TASTI_GIU = [59, 19]
+var TASTI_SINISTRA = [60, 1]
+var TASTI_DESTRA = [61, 4]
+var TASTI_START = [50, 48]
+
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                                                                  ║
+// ║   2. IL GIOCO: LEGGETE, CAMBIATE SOLO SE SAPETE COSA FATE        ║
+// ║   Le regole, il disegno e il game loop di Snake.                 ║
+// ║                                                                  ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+// ------------------------------------------------------------
+// IL CAMPO: una griglia di caselle. In alto resta una riga per titolo e punti.
+// ------------------------------------------------------------
+
+var HUD = 7                                                     // pixel in alto per le scritte
+var COLONNE = Math.floor(240 / DIMENSIONE_CELLA)                // caselle in orizzontale
+var RIGHE = Math.floor((136 - HUD) / DIMENSIONE_CELLA)          // caselle in verticale
+var CAMPO_X = Math.floor((240 - COLONNE * DIMENSIONE_CELLA) / 2)           // dove inizia il campo
+var CAMPO_Y = HUD + Math.floor((136 - HUD - RIGHE * DIMENSIONE_CELLA) / 2)
+
+// ------------------------------------------------------------
+// LE VARIABILI DELLA PARTITA
+// Il serpente è una lista di pezzi: snake[0] è la testa, l'ultimo è la coda.
+// Ogni pezzo è un oggetto con la sua casella: { x: colonna, y: riga }
+// ------------------------------------------------------------
+
+var snake = []
+var direction = { x: 1, y: 0 }       // dove va adesso: x = 1 destra, x = -1 sinistra, y = 1 giù, y = -1 su
+var nextDirection = { x: 1, y: 0 }   // dove andrà alla prossima mossa (l'ultimo tasto premuto)
+var foods = []                       // i cibi sullo schermo
+var growLeft = 0                     // quanti pezzi deve ancora aggiungere
+var speed = VELOCITA                 // la velocità di questa partita (cresce con ACCELERA)
+var moveTimer = 0                   // conta il tempo fino alla prossima mossa
+var score = 0
+var eaten = 0                        // quanti cibi ha mangiato in questa partita
+var bestScore = 300                    // il record della sessione (si azzera chiudendo la pagina)
+var gameState = 'menu'               // la macchina a stati: 'menu', 'play', 'gameover'
+
+function isArt() { return TITOLO.indexOf('\n') >= 0 }          // true se il titolo è ASCII art
+document.title = isArt() ? 'SNAKE' : TITOLO
+
+function anyKey(list, pressedNow) {  // true se uno dei tasti della lista è premuto
+  for (var i = 0; i < list.length; i++) {
+    if (pressedNow ? keyp(list[i]) : key(list[i])) return true
+  }
+  return false
+}
+
+// true se la casella x, y è occupata dal serpente
+function onSnake(x, y) {
+  for (var i = 0; i < snake.length; i++) {
+    if (snake[i].x === x && snake[i].y === y) return true
+  }
+  return false
+}
+
+// Mette un cibo in una casella libera scelta a caso
+function placeFood(food) {
+  for (var tries = 0; tries < 500; tries++) {
+    food.x = Math.floor(Math.random() * COLONNE)
+    food.y = Math.floor(Math.random() * RIGHE)
+    if (!onSnake(food.x, food.y)) return
+  }
+}
+
+function startGame() {
+  snake = []
+  var startX = Math.floor(COLONNE / 2), startY = Math.floor(RIGHE / 2)
+  for (var i = 0; i < Math.max(1, LUNGHEZZA_INIZIALE); i++) {
+    snake.push({ x: (startX - i + COLONNE) % COLONNE, y: startY })   // i pezzi in fila, verso sinistra
+  }
+  direction = { x: 1, y: 0 }
+  nextDirection = { x: 1, y: 0 }
+  growLeft = 0
+  speed = VELOCITA
+  moveTimer = 0
+  score = 0
+  eaten = 0
+  foods = []
+  for (var f = 0; f < Math.max(1, NUMERO_CIBI); f++) {
+    var food = { x: 0, y: 0 }
+    placeFood(food)
+    foods.push(food)
+  }
+  gameState = 'play'
+  melody(SUONO_START, ONDA, 6)
+}
+
+function gameOver() {
+  gameState = 'gameover'
+  tone('noise', 'C-3', null, 12, 0.6)                 // il colpo
+  melody(SUONO_GAMEOVER, ONDA, 9, 4)                  // la melodia che scende
+  if (score > bestScore) {
+    if (bestScore > 0 || score > 0) melody(SUONO_RECORD, ONDA, 6, 4 + SUONO_GAMEOVER.length * 9 + 6)   // nuovo record!
+    bestScore = score
+  }
+}
+
+// ------------------------------------------------------------
+// LE REGOLE
+// ------------------------------------------------------------
+
+// Il serpente mangia? Si guarda se la testa è sopra uno dei cibi.
+function eat() {
+  var head = snake[0]
+  for (var i = 0; i < foods.length; i++) {
+    var food = foods[i]
+    if (head.x === food.x && head.y === food.y) {
+      growLeft = growLeft + CRESCITA      // si allungherà di CRESCITA pezzi
+      score = score + PUNTI_CIBO          // i punti salgono
+      speed = speed + ACCELERA            // BONUS: un po' più veloce
+      eaten++
+      placeFood(food)                     // il cibo si sposta in un'altra casella
+      var note = noteNumber(SUONO_CIBO) + Math.min(eaten - 1, 24)      // più mangi, più la nota sale
+      tone(ONDA, note, note + 12, 5)
+      tone(ONDA, note + 7, note + 19, 5, 0.7, 4)
+    }
+  }
+}
+
+// La testa nuova finisce sopra il corpo? (il serpente si morde)
+function hitsItself(x, y) {
+  // BONUS (TODO): restituisci true se la casella x, y è occupata dal serpente.
+  // C'è già una funzione che lo fa: guarda onSnake() qui sopra.
+  // Poi la partita finisce da sola: ci pensa moveSnake().
+  return false
+}
+
+// Una mossa: la testa avanza di una casella, la coda la segue
+function moveSnake() {
+  // la direzione nuova vale solo se non torna indietro (non ci si può girare su sé stessi)
+  var turnsBack = nextDirection.x === -direction.x && nextDirection.y === -direction.y
+  if (!turnsBack && (nextDirection.x !== direction.x || nextDirection.y !== direction.y)) {
+    direction = nextDirection
+    tone(ONDA, SUONO_GIRA, null, 1, 0.15)             // il tic della curva, piano
+  }
+  var head = snake[0]
+  var newX = head.x + direction.x
+  var newY = head.y + direction.y
+
+  // fuori dal campo?
+  var outside = newX < 0 || newX >= COLONNE || newY < 0 || newY >= RIGHE
+  if (outside) {
+    if (MURI_ATTIVI) { gameOver(); return }
+    // senza muri riappare dal lato opposto: il % è il resto della divisione
+    newX = (newX + COLONNE) % COLONNE
+    newY = (newY + RIGHE) % RIGHE
+  }
+
+  if (hitsItself(newX, newY)) { gameOver(); return }
+
+  snake.unshift({ x: newX, y: newY })        // un pezzo nuovo davanti...
+  if (growLeft > 0) growLeft--               // ...e se deve crescere la coda resta dov'è
+  else snake.pop()                           // ...altrimenti l'ultimo pezzo sparisce
+  eat()
+}
+
+function readKeys() {
+  if (anyKey(TASTI_SU)) nextDirection = { x: 0, y: -1 }
+  if (anyKey(TASTI_GIU)) nextDirection = { x: 0, y: 1 }
+  if (anyKey(TASTI_SINISTRA)) nextDirection = { x: -1, y: 0 }
+  if (anyKey(TASTI_DESTRA)) nextDirection = { x: 1, y: 0 }
+}
+
+// ------------------------------------------------------------
+// DISEGNARE: lo schermo si ridisegna da zero a ogni fotogramma
+// ------------------------------------------------------------
+
+function drawCell(x, y, color, inset) {
+  rect(CAMPO_X + x * DIMENSIONE_CELLA + inset, CAMPO_Y + y * DIMENSIONE_CELLA + inset,
+    DIMENSIONE_CELLA - inset * 2, DIMENSIONE_CELLA - inset * 2, color)
+}
+
+function drawField() {
+  cls(COLORE_SFONDO)
+  if (MURI_ATTIVI) rectb(CAMPO_X - 1, CAMPO_Y - 1, COLONNE * DIMENSIONE_CELLA + 2, RIGHE * DIMENSIONE_CELLA + 2, COLORE_BORDO)
+  else {                                   // senza muri il bordo è tratteggiato: si può passare
+    for (var x = 0; x < COLONNE * DIMENSIONE_CELLA; x += 4) { pix(CAMPO_X + x, CAMPO_Y - 1, COLORE_BORDO); pix(CAMPO_X + x, CAMPO_Y + RIGHE * DIMENSIONE_CELLA, COLORE_BORDO) }
+    for (var y = 0; y < RIGHE * DIMENSIONE_CELLA; y += 4) { pix(CAMPO_X - 1, CAMPO_Y + y, COLORE_BORDO); pix(CAMPO_X + COLONNE * DIMENSIONE_CELLA, CAMPO_Y + y, COLORE_BORDO) }
+  }
+  for (var f = 0; f < foods.length; f++) {
+    var r = Math.max(1, Math.floor(DIMENSIONE_CELLA / 2) - 1)
+    circ(CAMPO_X + foods[f].x * DIMENSIONE_CELLA + DIMENSIONE_CELLA / 2 - 0.5, CAMPO_Y + foods[f].y * DIMENSIONE_CELLA + DIMENSIONE_CELLA / 2 - 0.5, r, COLORE_CIBO)
+  }
+  for (var i = snake.length - 1; i >= 0; i--) {
+    drawCell(snake[i].x, snake[i].y, i === 0 ? COLORE_TESTA : COLORE_CORPO, DIMENSIONE_CELLA >= 6 ? 1 : 0)
+  }
+  if (!isArt()) print(TITOLO, 2, 1, COLORE_TESTO)
+  var text = 'PUNTI ' + score + '   RECORD ' + bestScore
+  print(text, 238 - textWidth(text), 1, COLORE_TESTO)
+}
+
+function printCentered(text, y, color, scale) {
+  print(text, (240 - textWidth(text, scale)) / 2, y, color, scale)
+}
+
+function drawMenu() {
+  cls(COLORE_SFONDO)
+  if (isArt()) printArt(TITOLO, 44, COLORE_TESTA)
+  else printCentered(TITOLO, 30, COLORE_TESTA, 4)
+  for (var i = 0; i < 12; i++) rect(73 + i * 8, 72, 6, 6, i === 11 ? COLORE_TESTA : COLORE_CORPO)   // un serpente di esempio
+  if (time() % 1000 < 650) printCentered('premi INVIO per giocare', 96, COLORE_TESTO)
+  printCentered('frecce o W A S D per girare', 110, 13)
+}
+
+function drawGameOver() {
+  drawField()
+  rect(50, 40, 140, 56, COLORE_SFONDO)
+  rectb(50, 40, 140, 56, COLORE_TESTA)
+  printCentered('GAME OVER', 46, COLORE_TESTA, 2)
+  printCentered('punti ' + score + '    record ' + bestScore, 66, COLORE_TESTO)
+  printCentered('INVIO per rigiocare', 80, 13)
+}
+
+// ------------------------------------------------------------
+// IL GAME LOOP: TIC() viene chiamata 60 volte al secondo
+// ------------------------------------------------------------
+
+function TIC() {
+  if (gameState === 'menu') {
+    drawMenu()
+    if (anyKey(TASTI_START, true)) startGame()
+    return
+  }
+  if (gameState === 'gameover') {
+    drawGameOver()
+    if (anyKey(TASTI_START, true)) startGame()
+    return
+  }
+  readKeys()
+  moveTimer += speed / 60                  // speed caselle al secondo, 60 fotogrammi al secondo
+  while (moveTimer >= 1 && gameState === 'play') {
+    moveTimer -= 1
+    moveSnake()
+  }
+  drawField()
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                                                                  ║
+// ║                ███████╗████████╗ ██████╗ ██████╗                 ║
+// ║                ██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗                ║
+// ║                ███████╗   ██║   ██║   ██║██████╔╝                ║
+// ║                ╚════██║   ██║   ██║   ██║██╔═══╝                 ║
+// ║                ███████║   ██║   ╚██████╔╝██║                     ║
+// ║                ╚══════╝   ╚═╝    ╚═════╝ ╚═╝                     ║
+// ║                                                                  ║
+// ║                  DA QUI IN GIÙ NON SI MODIFICA                   ║
+// ║                 3. MOTORE DEL GIOCO: NON TOCCARE                 ║
+// ║                                                                  ║
+// ║    Un piccolo TIC-80 fatto in casa: schermo 240x136 disegnato    ║
+// ║    4 volte più grande, colori, testi, tasti, suoni e il ciclo    ║
+// ║              che chiama TIC() 60 volte al secondo.               ║
+// ║                                                                  ║
+// ╚══════════════════════════════════════════════════════════════════╝
+//
+// Cosa offre al gioco:
+//   cls(colore)  pix(x, y, colore)  rect(x, y, w, h, colore)  rectb(...)  circ(x, y, raggio, colore)
+//   print(testo, x, y, colore, grandezza)  textWidth(testo, grandezza)  printArt(testo, yCentro, colore)
+//   key(codice)  keyp(codice)  time()
+//   tone(onda, nota, notaFinale, fotogrammi, volume, ritardo)  melody(note, onda, fotogrammiPerNota, ritardo)
+
+var PAL_VERDE = ['#0A0F0A', '#0E3B1F', '#00FF66', '#7DFFB0', '#D8FFE6', '#00B847', '#008A3A', '#0F5C2E', '#123A22', '#1F7A44', '#B8FFD2', '#5CE69A', '#E8FFF0', '#9DC9A4', '#3E5744', '#1E2A22']
+var PAL_TIC80 = ['#1a1c2c', '#5d275d', '#b13e53', '#ef7d57', '#ffcd75', '#a7f070', '#38b764', '#257179', '#29366f', '#3b5dc9', '#41a6f6', '#73eff7', '#f4f4f4', '#94b0c2', '#566c86', '#333c57']
+var PAL = GREEN ? PAL_VERDE : PAL_TIC80
+
+var S = 4, W = 240, H = 136
+var cv = document.getElementById('screen'), g = cv.getContext('2d')
+cv.width = W * S; cv.height = H * S
+
+function col(c) {
+  if (typeof c === 'string') return c                        // '#ff4400' oppure 'gold'
+  return PAL[((c | 0) % 16 + 16) % 16]                        // un numero: la posizione nella tavolozza
+}
+function cls(c) { if (c == null) c = 0; g.fillStyle = col(c); g.fillRect(0, 0, cv.width, cv.height); document.body.style.background = col(c) }
+function pix(x, y, c) { g.fillStyle = col(c); g.fillRect(Math.round(x) * S, Math.round(y) * S, S, S) }
+function rect(x, y, w, h, c) { g.fillStyle = col(c); g.fillRect(Math.round(x) * S, Math.round(y) * S, Math.round(w) * S, Math.round(h) * S) }
+function rectb(x, y, w, h, c) { rect(x, y, w, 1, c); rect(x, y + h - 1, w, 1, c); rect(x, y, 1, h, c); rect(x + w - 1, y, 1, h, c) }
+function circ(x, y, r, c) {
+  g.fillStyle = col(c)
+  for (var dy = -r; dy <= r; dy++) { var w = Math.floor(Math.sqrt(r * r - dy * dy + r * 0.8)); g.fillRect((Math.round(x) - w) * S, (Math.round(y) + dy) * S, (w * 2 + 1) * S, S) }
+}
+var T0 = performance.now()
+function time() { return performance.now() - T0 }
+
+// ---------- i testi ----------
+function fontFamily() {
+  var f = (typeof FONT === 'string' && FONT) ? FONT : 'monospace'
+  if (f === 'monospace' || f === 'serif' || f === 'sans-serif') return f
+  return '"' + f + '", monospace'
+}
+function print(text, x, y, c, scale) {
+  text = String(text); scale = scale || 1
+  g.font = 'bold ' + (6 * scale * S) + 'px ' + fontFamily()
+  var w = Math.ceil(g.measureText(text).width / S)
+  g.fillStyle = col(c == null ? 12 : c); g.textBaseline = 'top'
+  g.fillText(text, Math.round(x * S), Math.round(y * S))
+  return w
+}
+function textWidth(text, scale) {
+  g.font = 'bold ' + (6 * (scale || 1) * S) + 'px ' + fontFamily()
+  return Math.ceil(g.measureText(String(text)).width / S)
+}
+function printArt(text, centerY, c) {   // ogni carattere in una casella fissa, con un font monospace
+  var lines = String(text).split('\n')
+  while (lines.length && !lines[0].trim()) lines.shift()
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop()
+  var longest = 1
+  for (var i = 0; i < lines.length; i++) longest = Math.max(longest, lines[i].replace(/\s+$/, '').length)
+  var cw = Math.min(5, 228 / longest), ch = cw * 1.6
+  var x0 = (240 - longest * cw) / 2, y0 = centerY - lines.length * ch / 2
+  g.font = 'bold ' + (ch * S) + 'px Menlo, Consolas, "Courier New", monospace'
+  g.fillStyle = col(c == null ? 12 : c); g.textBaseline = 'top'
+  for (var r = 0; r < lines.length; r++) {
+    for (var k = 0; k < lines[r].length; k++) {
+      if (lines[r][k] !== ' ') g.fillText(lines[r][k], (x0 + k * cw) * S, (y0 + r * ch) * S)
+    }
+  }
+}
+
+// ---------- i tasti (codici TIC-80: A..Z = 1..26, spazio 48, invio 50, frecce 58 59 60 61) ----------
+var CODE = {}
+for (var ci = 0; ci < 26; ci++) CODE['Key' + String.fromCharCode(65 + ci)] = ci + 1
+for (var cd = 0; cd < 10; cd++) CODE['Digit' + cd] = 27 + cd
+CODE.Space = 48; CODE.Enter = 50; CODE.NumpadEnter = 50; CODE.ArrowUp = 58; CODE.ArrowDown = 59; CODE.ArrowLeft = 60; CODE.ArrowRight = 61
+var held = {}, fresh = {}
+function key(k) { return !!held[k] }
+function keyp(k) { return !!fresh[k] }
+addEventListener('keydown', function (e) { unlockAudio(); var k = CODE[e.code]; if (k == null) return; e.preventDefault(); if (!held[k]) fresh[k] = true; held[k] = true })
+addEventListener('keyup', function (e) { var k = CODE[e.code]; if (k != null) held[k] = false })
+addEventListener('blur', function () { held = {} })
+addEventListener('pointerdown', function () { cv.focus(); unlockAudio() })
+
+// ---------- i suoni: onde 8 bit con Web Audio ----------
+// Il browser accende l'audio solo dopo il primo tasto o clic: ci pensa unlockAudio().
+var ac = null
+function unlockAudio() {
+  try {
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)()
+    if (ac.state === 'suspended') ac.resume()
+  } catch (e) {}
+}
+var NOTES = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 }
+function noteNumber(n) {   // 'C-5' diventa un numero (69 = A-4 = 440 Hz); un numero resta un numero
+  if (typeof n === 'number') return n
+  var m = /^([A-G]#?)-?(\d)$/.exec(String(n).toUpperCase())
+  return m ? NOTES[m[1]] + 12 * (+m[2] + 1) : 60
+}
+function noteFreq(n) { return 440 * Math.pow(2, (noteNumber(n) - 69) / 12) }
+function soundOn() { return !!ac && SUONI_ATTIVI !== false }
+function tone(wave, note, endNote, frames, volume, delayFrames) {
+  if (!soundOn()) return
+  var t = ac.currentTime + (delayFrames || 0) / 60, d = Math.max(0.02, (frames || 8) / 60)
+  var v = 0.25 * Math.max(0, Math.min(1, VOLUME)) * (volume == null ? 1 : volume)
+  if (v <= 0) return
+  var gain = ac.createGain()
+  gain.gain.setValueAtTime(v, t); gain.gain.setValueAtTime(v, t + d * 0.6); gain.gain.exponentialRampToValueAtTime(0.0005, t + d)
+  gain.connect(ac.destination)
+  if (wave === 'noise') {
+    var buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * d), ac.sampleRate), data = buf.getChannelData(0)
+    for (var i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+    var src = ac.createBufferSource(); src.buffer = buf; src.connect(gain); src.start(t)
+    return
+  }
+  var o = ac.createOscillator()
+  o.type = wave || 'square'
+  o.frequency.setValueAtTime(noteFreq(note), t)
+  if (endNote != null) o.frequency.exponentialRampToValueAtTime(noteFreq(endNote), t + d)
+  o.connect(gain); o.start(t); o.stop(t + d + 0.02)
+}
+function melody(notes, wave, framesEach, delayFrames) {
+  framesEach = framesEach || 6
+  for (var i = 0; i < notes.length; i++) tone(wave, notes[i], null, framesEach, 1, (delayFrames || 0) + i * framesEach)
+}
+
+// ---------- il ciclo: chiama TIC() 60 volte al secondo ----------
+var acc = 0, last = 0
+function loop(t) {
+  acc += Math.min(100, last ? t - last : 16.7); last = t
+  while (acc >= 1000 / 60) { TIC(); fresh = {}; acc -= 1000 / 60 }
+  requestAnimationFrame(loop)
+}
+// parte dopo aver aspettato il font scelto in FONT (al massimo 3 secondi)
+cv.focus()
+var fontWait = new Promise(function (done) { setTimeout(done, 3000) })
+try { fontWait = Promise.race([document.fonts.load('bold 24px ' + fontFamily()), fontWait]) } catch (e) {}
+fontWait.then(function () { requestAnimationFrame(loop) }, function () { requestAnimationFrame(loop) })
+</script>
+</body>
+</html>
