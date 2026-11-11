@@ -52,8 +52,13 @@ p { margin: 0 0 8px; }
   gap: 16px;
 }
 
+/* Tutti i riquadri alti uguali (come quelli a due righe), testo al centro */
 a {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 120px;
   padding: 24px 12px;
   text-align: center;
   color: var(--verde);
