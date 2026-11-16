@@ -1,8 +1,9 @@
 /* Nero e verde, pixel art */
 :root {
   --nero: #000;
-  --verde: #33ff66;
-  --verde-scuro: #0b5d1e;
+  --verde: #b266ff;
+  --verde-scuro: #4a0b7a;
+  --sfondo: #130425;   /* viola molto scuro */
 }
 
 * { box-sizing: border-box; }
@@ -10,7 +11,7 @@
 body {
   margin: 0;
   padding: 24px 16px;
-  background: var(--nero);
+  background: var(--sfondo);
   color: var(--verde);
   font-family: 'Press Start 2P', monospace;
   font-size: 12px;
