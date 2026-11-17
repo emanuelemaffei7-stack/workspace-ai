@@ -64,7 +64,8 @@
   #crediti .nome { display: block; color: #fff6d8; font-size: 1.3em; margin-top: 0.15em; }
   #crediti .grande { font-size: 2.2em; margin-top: 0.8em; }
   #saltacrediti { right: 2vmin; bottom: 2vmin; text-align: right; font-size: 2.2vmin; color: #ffe27a; display: none; }   /* a destra: non copre i nomi al centro */
-  #viola { position: fixed; inset: 0; background: #5b1fa8; opacity: 0; pointer-events: none; z-index: 1; }
+  #viola { position: fixed; inset: 0; background: #05031a; overflow: hidden; opacity: 0; pointer-events: none; z-index: 1; }
+  #viola .vortice { position: absolute; left: 50%; top: 50%; width: 170vmax; height: 170vmax; margin: -85vmax 0 0 -85vmax; background-size: 100% 100%; }   /* la stessa spirale del portale, in grande */
   #titolo .cella { display: inline-block; width: 1.05em; height: 1.05em; line-height: 1.05em; text-align: center; }
   #titolo { left: 50%; top: 0.5vh; transform: translateX(-50%); text-align: center; line-height: 1; background: #3b2316; border: 0.6vmin solid #ffb300; border-radius: 2.2vmin; padding: 0.35em 0.7em; }   /* lo sfondo: marrone come la pista-chitarra, con il bordo giallo come il menu */
   #menu { left: 50%; top: 52%; transform: translate(-50%, -50%); text-align: center; font-size: 3.2vmin; line-height: 1.05; }
@@ -571,6 +572,7 @@ function creaPilastri() {
 
 // IL PORTALE: in fondo al ponte, lontano. Un anello luminoso con dentro una spirale che gira.
 // Senza nebbia, così si vede anche da 190 metri.
+var immaginePortale = ''                             // l'immagine della spirale del portale (la usa anche il velo del finale)
 function creaPortale() {
   portale = new THREE.Group()
   portale.add(new THREE.Mesh(new THREE.TorusGeometry(8, 0.8, 12, 48), new THREE.MeshBasicMaterial({ color: 0x7df9ff, fog: false })))   // l'anello
@@ -596,6 +598,7 @@ function creaPortale() {
     }
     c.stroke()
   }
+  immaginePortale = tela.toDataURL()                                 // la stessa immagine serve al finale, a tutto schermo
   var texPortale = new THREE.CanvasTexture(tela)
   texPortale.colorSpace = THREE.SRGBColorSpace
   var interno = new THREE.Mesh(new THREE.CircleGeometry(7.3, 48), new THREE.MeshBasicMaterial({ map: texPortale, transparent: true, side: THREE.DoubleSide, fog: false, depthWrite: false }))
@@ -842,6 +845,9 @@ function ciclo(tempo) {
     if (punti >= PUNTI_FINALE) iniziaFinale()        // 7777: si entra nel portale
   }
   if (stato === 'finale') aggiornaFinale(dt)
+  if (stato === 'finale' || stato === 'theEnd' || stato === 'crediti') {   // la spirale gira piano, come l'interno del portale
+    document.querySelector('#viola .vortice').style.transform = 'rotate(' + (ultimoTempo / 1000 * 0.6) + 'rad) scale(' + scalaVelo + ')'
+  }
   if (stato === 'theEnd') {
     tempoFinale += dt
     if (tempoFinale > 5 || premuto('Enter') || premuto('Space')) avviaCrediti(true)
@@ -927,12 +933,14 @@ function iniziaFinale() {
   stato = 'finale'
   tempoFinale = 0
   if (!coloreViola) coloreViola = new THREE.Color('#7a2bd6')
+  document.querySelector('#viola .vortice').style.backgroundImage = 'url(' + immaginePortale + ')'   // lo schermo diventa il portale
   var finale = Math.floor(punti)
   if (finale > record) { record = finale; salvaRecord(record) }
   for (var i = 0; i < ostacoli.length; i++) ostacoli[i].visible = false   // piatti e pacchi spariscono: la strada è libera
   suonaVortice()
 }
 
+var scalaVelo = 1                                    // quanto è grande la spirale a tutto schermo
 function aggiornaFinale(dt) {
   tempoFinale += dt
   var t = tempoFinale
@@ -950,7 +958,9 @@ function aggiornaFinale(dt) {
   scena.fog.far = NEBBIA_DISTANZA - (NEBBIA_DISTANZA - 45) * k       // la nebbia si stringe: tutto si perde nel viola
   luceAmbiente.color.set('#ffffff').lerp(coloreViola, k * 0.8)
   mare.material.color.lerp(coloreViola, k)
-  document.getElementById('viola').style.opacity = Math.max(0, Math.min(1, (t - 5) / 2.5))   // alla fine lo schermo è tutto viola
+  var entrata = Math.max(0, Math.min(1, (t - 5) / 2.5))              // 0 = non si vede ancora, 1 = tutto schermo
+  document.getElementById('viola').style.opacity = entrata           // alla fine lo schermo è tutto il portale
+  scalaVelo = 0.4 + 0.6 * entrata                                    // e la spirale si apre, come se ci entrassimo
   if (t > 8) mostraTheEnd()
 }
 
@@ -986,6 +996,7 @@ function htmlMenuFilm() { return voce('BRAVO', 'HAI FATTO ' + Math.floor(punti) 
 function ripristinaMondo() {
   var velo = document.getElementById('viola')
   if (velo) velo.style.opacity = 0
+  scalaVelo = 1
   portale.position.z = -200
   if (luceAmbiente) luceAmbiente.color.set('#ffffff')
   scena.fog.far = NEBBIA_DISTANZA
@@ -997,16 +1008,21 @@ function ripristinaMondo() {
 // Si aprono dal menu principale e partono da soli dopo THE END. INVIO, SPAZIO o CANC li saltano.
 // Ogni voce è [ruolo, nome, nome...]. I nomi qui sotto sono inventati: cambiali con quelli veri.
 var CREDITI = [
-  ['IDEA E GAME DESIGN', "Scotty l'Uovo Intrepido"],
-  ['PROGRAMMAZIONE', 'Claude, assistente AI', 'e un game designer al primo anno'],
-  ['DIREZIONE ARTISTICA', 'Il Gran Cuoco dei Risotti'],
-  ['PIATTI, RISO E UOVA', 'Chef Tuorlo', 'Madame Albume'],
-  ['MUSICHE E SUONI', 'Maestro Cocoricò', 'La Gallina Ovaiola'],
-  ['PIANOFORTE', 'Salamander Grand Piano di Alexander Holm', 'licenza CC BY 3.0'],
-  ['ALTRI STRUMENTI', 'FluidR3 GM SoundFont', 'tramite midi-js-soundfonts'],
-  ['MOTORE 3D', 'Three.js'],
-  ['COLLAUDO', "Il Pacco di Riso d'Oro", 'Tutti i piatti che ti hanno strapazzato'],
-  ['UN GRAZIE A', 'Tutti i chicchi di riso']
+  ['DEVELOPED BY', 'Kyrus Productions'],
+  ['GAME DIRECTOR', 'Emanuele Maffei'],
+  ['CREATIVE DIRECTOR', 'Emanuele Maffei'],
+  ['PRODUCER', 'Claudio Codice'],
+  ['CONCEPT CHARACTER DESIGN', 'Marialucia Briamonte'],  
+  ['GAME DESIGN', 'Emanuele Maffei', 'Claudio Codice'],
+  ['PROGRAMMING', 'Claudio Codice'],
+  ['ART DIRECTION', 'Emanuele Maffei'],
+  ['VOICE CAST', 'Game Over Voice: Marialucia Briamonte'],
+  ['E CON LA PARTECIPAZIONE SPECIALIE DI', 'Gerry Scotti'],
+  ['SOUNDTRACK', 'Emanuele Maffei', 'Claudio Codice'],
+  ['PIANO', 'Salamander Grand Piano di Alexander Holm', 'licenza CC BY 3.0'],
+  ['MUSICAL INSTRUMENTS', 'FluidR3 GM SoundFont', 'tramite midi-js-soundfonts'],
+  ['3D ENGINE', 'Three.js'],
+  ['SPECIAL THANKS', 'Mattia Esposito', 'Francesco Di Zenzo'],
 ]
 var yCrediti = 0                                     // dove si trova il testo (pixel dall'alto dello schermo)
 var creditiDaFinale = false                          // true = partiti dopo THE END, false = aperti dal menu
@@ -1020,6 +1036,7 @@ function avviaCrediti(daFinale) {
     for (var k = 1; k < CREDITI[i].length; k++) html += '<span class="nome">' + CREDITI[i][k] + '</span>'
   }
   html += '<span class="nome grande">GRAZIE PER AVER GIOCATO!</span>'
+  html += '<span class="nome grande">E CREDETE SEMPRE IN SCOTTY THE EGG!</span>'
   scritte.crediti.innerHTML = '<div class="dentro">' + html + '</div>'
   scriviHtml('saltacrediti', daFinale ? 'INVIO O SPAZIO PER SALTARE' : 'CANC PER TORNARE INDIETRO')
   mostra('menu', false)
@@ -1042,10 +1059,8 @@ function chiudiCrediti() {
   mostra('crediti', false)
   mostra('saltacrediti', false)
   suonaMenuIndietro()
-  if (creditiDaFinale) {
-    mostraFineFilm()                                  // dopo i riconoscimenti torna THE END con il suo menu
-  } else {
-    mostraMenu()                                      // dal menu principale: si torna lì, con la voce di prima scelta
+  mostraMenu()                                        // sia dal finale sia dal menu: si torna al menu principale
+  if (!creditiDaFinale) {                             // se erano stati aperti dal menu, resta scelta la voce RICONOSCIMENTI
     sceltaMenu = VOCI_MENU.length - 1
     scriviHtml('menu', htmlMenuPrincipale())
   }
@@ -1733,6 +1748,7 @@ function creaScritte() {
   if (isArt() && UOVA_EMOJI) scriviLogo(TITOLO)
   var velo = document.createElement('div')             // il velo viola del finale: sta sopra la scena e sotto le scritte
   velo.id = 'viola'
+  velo.innerHTML = '<div class="vortice"></div>'
   document.body.appendChild(velo)
   scritte.titolo.style.color = colore(COLORE_NAVICELLA)
   if (isArt()) { scritte.titolo.style.fontFamily = 'monospace'; scritte.titolo.style.textAlign = 'left' }
